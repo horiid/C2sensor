@@ -94,7 +94,7 @@ def monitor(host: str, src_port=None, dst_port=80):
     print("Target host:", host)
     s_ping = send_ping(host)
     s_http = send_http(host=host, src_port=src_port, dst_port=dst_port)
-    if type(s_http) is None:
+    if s_http is None:
         print("\nERROR in send_http")
     else:
         print("\nsend http:", s_http.status_code, s_http.reason)
