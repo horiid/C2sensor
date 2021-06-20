@@ -81,7 +81,7 @@ def main():
             dst_port = HTTP_
         # PORT has multiple port number
         elif "," in row[csvidx.PORT]:
-            dst_port = dst_port.split(',')
+            dst_port = row[csvidx.PORT].split(',')[1]
             if "443" in dst_port:
                 dst_port = HTTPS_
             else:
