@@ -97,7 +97,7 @@ def main():
         http_version = ''
         http_response_ext = {'status_code': '', 'reason_phrase': ''}
         # Received HTTP response
-        if type(http_ext) is not None:
+        if http_ext is not None:
             http_response_ext['status_code'] = http_ext[0]
             http_response_ext['reason_phrase'] = http_ext[1]
             if http_ext[2] == 10:
