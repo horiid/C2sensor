@@ -20,7 +20,7 @@ def main():
     # parse arguments
     parser = argparse.ArgumentParser(description="Monitor agent for sending ping and http request")
     parser.add_argument('c2list', help="CSV file showing lists of C2 servers")
-    parser.add_argument('port', type=int, help="Specify destination port number. HTTP_ by default.")
+    parser.add_argument('--port', type=int, default=HTTP_, help="Specify destination port number. HTTP_ by default.")
     args = parser.parse_args()
 
     # get the executed time and set it to the filename
