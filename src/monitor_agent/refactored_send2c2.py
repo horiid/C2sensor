@@ -1,4 +1,7 @@
-import argparse, datetime, pprint, json, sys
+import argparse, datetime, pprint, json, sys, os
+import subprocess
+
+from requests.adapters import SSLError
 sys.path.append("../")
 from json.decoder import JSONDecodeError, JSONDecoder
 from .monitorutils import CsvParser, monitor
@@ -13,10 +16,31 @@ def dump_cti_json(mon: MonitoringStat=None):
         
     pass
 
+def print_banner():
+    clear_cmd = "cls" if os.name == "nt" else "clear"
+    os.system(clear_cmd)
+    print('''
+   ____  ____    ____                                 
+  / ___||___ \  / ___|   ___  _ __   ___   ___   _ __ 
+ | |      __) | \___ \  / _ \| '_ \ / __| / _ \ | '__|
+ | |___  / __/   ___) ||  __/| | | |\__ \| (_) || |   
+  \____||_____| |____/  \___||_| |_||___/ \___/ |_|
+    ''')
+
+def print_threat_id(_id):
+    print('''
+\n==========================
+Threat ID: {0}
+==========================
+'''.format(_id))
 
 def main():
+    print_banner()
+    
+    # HTTP/HTTPS known ports
     HTTP_ = 80
     HTTPS_ = 443
+
     # parse arguments
     parser = argparse.ArgumentParser(description="Monitor agent for sending ping and http request")
     parser.add_argument('c2list', help="CSV file showing lists of C2 servers")
@@ -31,6 +55,7 @@ def main():
     # list of threats in csv file
     rows = CsvParser(filename=args.c2list)
     for row in rows.readline():
+        print_threat_id(row[csvidx.UID])
         # prepare HTTP header for send_http()
         req_header = {"Accept-Encoding": "gzip,deflate", "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.106 Safari/537.36",
         "Host": ""}
@@ -40,7 +65,7 @@ def main():
             input = row[csvidx.DOMAIN]
             req_header['Host'] = input
         elif row[csvidx.URL]:
-            # ignore schema e.g. http, https, ftp.
+            # ignore schema e.g. http://, https://, ftp://.
             input = row[csvidx.URL].split('//', 1)[1]
             # ignore directory part
             req_header['Host'] = input.split('/', 1)[0]
@@ -56,15 +81,7 @@ def main():
 
         domain_name = [row[csvidx.DOMAIN].replace('[', '').replace(']', '')]
         ipv4_addr = [row[csvidx.HOST].replace('[', '').replace(']', '')]
-        # parse row[file type] and if there are multiple files, store data to 'files'
-        is_file_single = False
-        file_list = row[csvidx.FILE_TYPE].split(',')
-        print("file list: {}".format(file_list))
-        if len(file_list) == 1 and file_list[0] != '': is_file_single = True
-        print("is_file_single:", is_file_single)
-        # do file count processing here
-
-
+        
         # Get hashes
         hashes = row[csvidx.HASH]
         try:
@@ -72,7 +89,28 @@ def main():
             hashes, i= json_decoder.raw_decode(hashes)
             if i in locals(): del i
         except JSONDecodeError:
-            pass # if there's no hashes, just pass.
+            print('No file info provided. Proceeding.\n')
+        # parse row[file type] and if there are multiple file info, store data to 'files'
+        # otherwise store a file information to 'file'.
+        # Store file info to variables
+        file_cnt = 0
+        file_list = row[csvidx.FILE_TYPE].split(',')
+        mal_file = {"file-type": "", "name": "", "hashes": {"md5":"", "sha1": "", "sha256": ""}}
+        mal_files = []
+        for file in file_list:
+            if file != '':
+                print('\n==FOUND FILE INFO==\nFILE TYPE:', file)
+                pprint.pprint(hashes[file_cnt])
+                print("\n")
+                mal_file["file-type"] = file
+                mal_file["hashes"] = hashes[file_cnt]
+                mal_files.append(mal_file.copy())
+                file_cnt += 1
+        if file_cnt == 1:
+            mal_files = []
+        elif file_cnt > 1:
+            mal_file = {"file-type": "", "name": "", "hashes": {"md5":"", "sha1": "", "sha256": ""}}
+
         # Preprocessing for  sending data to C2 servers
         src_port = randint(49152, 65535)
         dst_port = None
@@ -88,12 +126,11 @@ def main():
                 dst_port = HTTP_
         else:
             dst_port = HTTP_
-                
+        
+        # Send ping & HTTP "GET" request
         network_traffic = {'src-port': src_port, 'dst-port': dst_port}
-        # send ping and http GET method
         ping, http_ext = monitor(host=input, src_port=src_port, dst_port=dst_port)
         print(ping, http_ext)
-
         http_version = ''
         http_response_ext = {'status_code': '', 'reason_phrase': ''}
         # Received HTTP response
@@ -113,8 +150,9 @@ def main():
             req_value = ''
         http_request_ext = {'request-method': 'get', 'request-value': req_value,
         'request-version': http_version, 'request-header': req_header}
-        monitor_ = MonitoringStat()
+
         # Append data to MonitoringStat instance
+        monitor_ = MonitoringStat()
         monitor_.input = input
         monitor_.domain_name = domain_name
         monitor_.ipv4_addr = ipv4_addr
@@ -123,10 +161,10 @@ def main():
         monitor_.ping_ext = ping
         monitor_.http_request_ext = http_request_ext
         monitor_.http_response_ext = http_response_ext
-
-        # monitor_['file']
-        # monitor_['files']
+        monitor_.file = mal_file
+        monitor_.files = mal_files
         pprint.pprint(monitor_.monitoring)
+        print('\n')
 
 if __name__ == '__main__':
     main()
