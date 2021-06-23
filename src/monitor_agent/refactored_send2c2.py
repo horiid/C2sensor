@@ -1,20 +1,11 @@
 import argparse, datetime, pprint, json, sys, os
-import subprocess
-
-from requests.adapters import SSLError
 sys.path.append("../")
+
 from json.decoder import JSONDecodeError, JSONDecoder
-from .monitorutils import CsvParser, monitor
-from .monitorutils import CsvParseIndex as csvidx
+from monitor_agent.monitorutils import monitor
+from monitor_agent.csvutils import CsvParser, CsvParseIndex as csvidx
 from models.schema import ProcessStat, MonitoringStat, X_ICT_Isac_Cti
 from random import randint
-
-def dump_cti_json(mon: MonitoringStat=None):
-    if mon is None:
-        mon = MonitoringStat.empty_map()
-        json.dump(mon)
-        
-    pass
 
 def print_banner():
     clear_cmd = "cls" if os.name == "nt" else "clear"
@@ -85,11 +76,17 @@ def main():
         # Get hashes
         hashes = row[csvidx.HASH]
         try:
+            # if #hash is not subscriptable, raise KeyError and exit.
+            if  hashes != "" and "{" not in hashes:
+                raise KeyError
             json_decoder = JSONDecoder()
             hashes, i= json_decoder.raw_decode(hashes)
             if i in locals(): del i
         except JSONDecodeError:
-            print('No file info provided. Proceeding.\n')
+            print('No hash info found. Proceeding.\n')
+        except KeyError:
+            print("#hash info found, but failed to identify the algorithm.")
+            hashes = ['']
         # parse row[file type] and if there are multiple file info, store data to 'files'
         # otherwise store a file information to 'file'.
         # Store file info to variables
@@ -124,12 +121,17 @@ def main():
                 dst_port = HTTPS_
             else:
                 dst_port = HTTP_
+        # single PORT number
         else:
-            dst_port = HTTP_
-        
+            dst_port = row[csvidx.PORT]
+            try:
+                dst_port = int(dst_port)
+            except:
+                print(row[csvidx.PORT], "is not proper port number.")
+                dst_port = HTTP_
         # Send ping & HTTP "GET" request
         network_traffic = {'src-port': src_port, 'dst-port': dst_port}
-        ping, http_ext = monitor(host=input, src_port=src_port, dst_port=dst_port)
+        ping, http_ext = monitor(host=input, src_port=src_port, dst_port=dst_port, http_headers=req_header)
         print(ping, http_ext)
         http_version = ''
         http_response_ext = {'status_code': '', 'reason_phrase': ''}

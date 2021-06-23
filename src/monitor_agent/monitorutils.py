@@ -1,82 +1,8 @@
 
-import re, requests, subprocess, csv, os, re, chardet
+import re, requests, subprocess, os, re, chardet
 from random import randint
-from enum import IntEnum, auto
-from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.poolmanager import PoolManager
+from requests.adapters import HTTPAdapter, PoolManager
 
-
-# Constants for reading elements of csv file
-# Numbers are index of each row
-# 1,,#uid,#ip,#domain,#url,#port,#date,#report-date,#note,#hash,#file type
-class CsvParseIndex(IntEnum):
-    NO          = 0
-    EMPTY       = auto()
-    UID         = auto()
-    HOST        = auto()
-    DOMAIN      = auto()
-    URL         = auto()
-    PORT        = auto()
-    DATE        = auto()
-    REPOPT_DATE = auto()
-    NOTE        = auto()
-    HASH        = auto()
-    FILE_TYPE   = auto()
-
-# Class for reading csv file
-class CsvParser():
-    def __init__(self, filename):
-        self._filename: str = filename
-        CsvParser.count: int = 0
-    
-    def validate_file_format(self):
-        # check file extension
-        if not self._filename[-4:] == ".csv":
-            print('ERROR: Set the file extension to ".csv".')
-            return False
-    
-        # read file as csv file
-        with open(self._filename, 'r', encoding='utf-8_sig') as f:
-            # retrieve header from CSV file
-            header = next(csv.reader(f))
-        validate = header[CsvParseIndex.NO.value]            == '1'            and \
-                   header[CsvParseIndex.EMPTY.value]         == ''             and \
-                   header[CsvParseIndex.UID.value]           == '#uid'         and \
-                   header[CsvParseIndex.HOST.value]          == '#ip'          and \
-                   header[CsvParseIndex.DOMAIN.value]        == '#domain'      and \
-                   header[CsvParseIndex.URL.value]           == '#url'         and \
-                   header[CsvParseIndex.PORT.value]          == '#port'        and \
-                   header[CsvParseIndex.DATE.value]          == '#date'        and \
-                   header[CsvParseIndex.REPOPT_DATE.value]   == '#report-date' and \
-                   header[CsvParseIndex.NOTE.value]          == '#note'        and \
-                   header[CsvParseIndex.HASH.value]          == '#hash'        and \
-                   header[CsvParseIndex.FILE_TYPE.value]     == '#file type'
-        if not validate:
-            print('ERROR: Your column header does not follow the specification.')
-            return False
-        else:
-            return True
-    
-    def readline(self):
-        if not self.validate_file_format():
-            print('Aborting.\n')
-            exit(1)
-        else:
-            print('The file format seems good. Proceeding process...')
-        
-        with open(self._filename, 'rt', encoding='utf-8_sig') as f:
-            reader = csv.reader(f)
-            # skip the header
-            if CsvParser.count_rows() == 0: next(reader)
-            for line in reader:
-                CsvParser.count += 1
-                # skip line with empty UID
-                if line[CsvParseIndex.UID.value] == '': continue
-                yield line
-    # count lines
-    @classmethod
-    def count_rows(cls):
-        return cls.count
 
 # Adapter class for setting destination port
 class SourcePortAdapter(HTTPAdapter):
@@ -90,10 +16,27 @@ class SourcePortAdapter(HTTPAdapter):
 
 
 # Manages of send_ping and send_http
-def monitor(host: str, src_port=None, dst_port=80):
+def monitor(host: str, src_port:int=None, dst_port:int=80, http_headers:dict=None):
+    """Send ping and HTTP GET request
+
+    monitor() sends ping and HTTP GET request with args given: 
+    host, source port, and destination port.
+
+    Args:
+        host (str): Target host. It could be IP address, FQDN, or URL.
+        src_port (int): Source port, which means a port for our side. None if not provided.
+        dst_port (int): Destination port, which means a port for the target host. 80 if not provided.
+    
+    Returns:
+        tuple: results of send_ping() and send_http(). Index: 0 for ping, 1 for HTTP.
+        s_ping: See send_ping.
+        s_http: 
+            tuple: status_code (int), HTTP reason phrase (str), HTTP version (int)
+            None: On failure/timeout.
+    """
     print("Target host:", host)
     s_ping = send_ping(host)
-    s_http = send_http(host=host, src_port=src_port, dst_port=dst_port)
+    s_http = send_http(host=host, src_port=src_port, dst_port=dst_port, headers=http_headers)
     if s_http is None:
         print("\nERROR in send_http")
     else:
@@ -101,8 +44,23 @@ def monitor(host: str, src_port=None, dst_port=80):
         s_http = (s_http.status_code, s_http.reason, s_http.raw.version)
     return s_ping, s_http 
 
+
 # send ping
 def send_ping(host, times="4"):
+    """Send ping to specified host
+    
+    send_ping() sends ping to the host specified by the "host" argument.
+
+    Args:
+        host (str): Target host. It could be IP address, FQDN, or URL.
+        times (int): number of times to send ping. 4 by default.
+    
+    Returns:
+        dict: result of ping statistics. Keys are as follows:
+              "loss": loss rate with % (str)
+              "ttl": time-to-live (int)
+              "rtt": average round trip time in miliseconds(ms) (str).
+    """
     # option and pattern for UNIX-like platforms
     opt = '-c'
     # patterns to fetch loss rate, ttl, and rtt
@@ -114,9 +72,9 @@ def send_ping(host, times="4"):
         opt = '-n'
         loss_pattern = r'([0-9]+\%) の損失'
         rtt_pattern = r'平均 = ([0-9]+)ms'
+    print("Sending ping to...", host)
     ping = subprocess.run(["ping", opt, times, host], stdout=subprocess.PIPE)
     try:
-        print("Sending ping to...", host)
         # raise CalledProcessError if returncode is not zero
         ping.check_returncode()
         
@@ -143,7 +101,21 @@ def send_ping(host, times="4"):
 
 
 # send HTTP GET request and returns response
-def  send_http(host: str, src_port:int=None, dst_port:int=80, header:dict=None):
+def  send_http(host: str, src_port:int=None, dst_port:int=80, headers:dict=None):
+    """Send HTTP GET request to specified host
+
+    send_http() sends HTTP GET request to the host provided by "host" argument.
+
+    Args:
+        host (str): Target host. It could be IP address, FQDN, or URL.
+        src_port (int): Source port, which means a port for our side. None if not provided.
+        dst_port (int): Destination port, which means a port for the target host. 80 if not provided.
+        header (dict): headers for request. None if not provided.
+
+    Returns:
+        requsts.Response: results requests.Session.get(), which is obj: Response. 
+        None: returns None when the function raised requests.ConnectionError or requests.Timeout.
+    """
     if dst_port == 80:
         query = "http://"
     elif dst_port == 443:
@@ -160,7 +132,7 @@ def  send_http(host: str, src_port:int=None, dst_port:int=80, header:dict=None):
     query = query + host + ":" + str(dst_port)
     try:
         print("\nSending HTTP request to", query + "...")
-        response = sess.get(query, timeout=(4.0,8.0))
+        response = sess.get(query, headers=headers, timeout=(4.0,8.0), allow_redirects=False)
     except requests.ConnectionError:
         print('ERROR: Connection Error')
         return None
