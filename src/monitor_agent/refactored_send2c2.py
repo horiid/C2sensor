@@ -6,8 +6,7 @@ from monitor_agent.monitorutils import monitoring_stat
 from models.schema import ProcessStat, X_ICT_Isac_Cti
 
 def print_banner():
-    clear_cmd = "cls" if os.name == "nt" else "clear"
-    os.system(clear_cmd)
+    os.system("cls" if os.name == "nt" else "clear")
     print('''
    ____  ____    ____                                 
   / ___||___ \  / ___|   ___  _ __   ___   ___   _ __ 

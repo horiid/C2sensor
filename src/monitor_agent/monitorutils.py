@@ -27,6 +27,17 @@ Threat ID: {0}
 '''.format(_id))
 
 def monitoring_stat(row: list, observe_time:str):
+    '''Parse a CSV row and create MonitoringStat instance
+
+    Parse a CSV row and create/return MonitoringStat instance for X_ICT_Isac_Cti schema.
+
+    Args:
+        row (list): CSV row.
+        observe_time (str): Execution time of the program. Needed for MonitoringStat.
+
+    Returns:
+        MonitoringStat: Class instance of MonitoringStat. 
+    '''
     HTTP_ = 80
     HTTPS_ = 443
     print_threat_id(row[csvidx.UID])
@@ -49,7 +60,7 @@ def monitoring_stat(row: list, observe_time:str):
         req_header['Host'] = input
     else:
         # There's no information of domain name or IP, so skip this row.
-        print('IP address or domain name is not provided. Skipped this row.\n')
+        print('IP address or domain is not provided. Skipped this row.\n')
         return
     input = input.replace('[', '').replace(']', '')
 
@@ -148,6 +159,7 @@ def monitoring_stat(row: list, observe_time:str):
     monitor_.files = mal_files
     pprint.pprint(monitor_.monitoring)
     print('\n')
+    return monitor_
 
 # Manages of send_ping and send_http
 def monitor(host: str, src_port: int=None, dst_port:int=80, http_headers:dict=None):
