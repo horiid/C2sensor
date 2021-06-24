@@ -26,7 +26,7 @@ Threat ID: {0}
 ==========================
 '''.format(_id))
 
-def monitoring_stat(row: list, observe_time:str):
+def monitoring_stat(row: list):
     '''Parse a CSV row and create MonitoringStat instance
 
     Parse a CSV row and create/return MonitoringStat instance for X_ICT_Isac_Cti schema.
@@ -139,7 +139,6 @@ def monitoring_stat(row: list, observe_time:str):
     monitor_.input = input
     monitor_.domain_name = domain_name
     monitor_.ipv4_addr = ipv4_addr
-    monitor_.observe_time = observe_time
     monitor_.network_traffic = network_traffic
     monitor_.ping_ext = ping
     monitor_.http_request_ext = http_request_ext

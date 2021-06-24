@@ -37,9 +37,9 @@ def main():
     # hense, it will be much slower compared to concurrent execution.
     rows = CsvParser(filename=args.c2list)
     with ThreadPoolExecutor(max_workers=4, thread_name_prefix="Server") as executor:
-        results = executor.map(monitoring_stat, [row for row in rows.readline()], observe_time)
+        results = executor.map(monitoring_stat, [row for row in rows.readline()])
     for result in results:
-        pprint(result.monitoring, indent=2)
+        pprint(result.monitoring, width=40)
         print()
 
 if __name__ == '__main__':
