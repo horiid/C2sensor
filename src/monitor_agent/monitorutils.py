@@ -3,6 +3,7 @@ import re, requests, subprocess, os, chardet, pprint, concurrent.futures
 from json import JSONDecodeError, JSONDecoder
 from random import randint
 from requests.adapters import HTTPAdapter, PoolManager
+import monitor_agent
 from monitor_agent.csvutils import CsvParseIndex as csvidx
 from models.schema import MonitoringStat
 
@@ -16,15 +17,6 @@ class SourcePortAdapter(HTTPAdapter):
         self.poolmanager = PoolManager(num_pools=connections, maxsize=maxsize,
                                        block=block, source_address=('', self._source_port))
 
-
-# Concurrent processing for network I/O
-
-def print_threat_id(_id):
-    print('''
-\n==========================
-Threat ID: {0}
-==========================
-'''.format(_id))
 
 def monitoring_stat(row: list):
     '''Parse a CSV row and create MonitoringStat instance
@@ -47,21 +39,18 @@ def monitoring_stat(row: list):
     if row[csvidx.DOMAIN]:
         # domain name e.g. example.com
         input = row[csvidx.DOMAIN]
-        req_header['Host'] = input
     elif row[csvidx.URL]:
         # ignore schema e.g. http://, https://, ftp://.
         input = row[csvidx.URL].split('//', 1)[1]
         # ignore directory part
-        req_header['Host'] = input.split('/', 1)[0]
     elif row[csvidx.HOST]:
         # IPv4
         input = row[csvidx.HOST]
-        req_header['Host'] = input
     else:
         # There's no information of domain name or IP, so skip this row.
         return
     input = input.replace('[', '').replace(']', '')
-
+    req_header["Host"] = input
     domain_name = [row[csvidx.DOMAIN].replace('[', '').replace(']', '')]
     ipv4_addr = [row[csvidx.HOST].replace('[', '').replace(']', '')]
 
@@ -136,6 +125,7 @@ def monitoring_stat(row: list):
                         'request-version': http_version, 'request-header': req_header}
     # Append data to MonitoringStat instance
     monitor_ = MonitoringStat()
+    monitor_.threat_id = row[csvidx.UID]
     monitor_.input = input
     monitor_.domain_name = domain_name
     monitor_.ipv4_addr = ipv4_addr

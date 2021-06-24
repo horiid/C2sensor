@@ -6,3 +6,6 @@ threatCSV
 
 # ignore vscode config folder
 .vscode
+
+# ignore monitor log directory
+monitor_log

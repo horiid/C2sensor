@@ -1,5 +1,5 @@
 from pprint import pprint
-import http, uuid, sys, json, datetime as dt
+import uuid, datetime as dt
 
 # Value class for key: "monitoring"
 class MonitoringStat():
@@ -13,11 +13,12 @@ class MonitoringStat():
         '''Return True if key set of given dict is the same or superset of Monitoring.KEY_SET.'''
         return mon.keys() >= cls.KEY_SET
         
-    def __init__(self, input: str=None, domain_name: list=None, 
+    def __init__(self, thread_id:str=None, input: str=None, domain_name: list=None, 
                  ipv4_addr: list=None, file: dict=None, files: list=None,
                  network_traffics: dict=None, ping_ext: dict=None,
                  http_request_ext: dict=None, http_response_ext: dict=None
                  ) -> None:
+            self.threat_id    = thread_id
             self.input        = input
             self.domain_name  = domain_name
             self.ipv4_addr    = ipv4_addr
@@ -72,23 +73,25 @@ class MonitoringStat():
 class ProcessStat():
     def __init__(self, start: str, end: str) -> None:
         self.sys_name = "vcity-monitor"
-    @property
-    def start(self):
-        return self.start
-    @start.setter
-    def start(self, start):
         self.start = start
+        self.end = end
+    @classmethod
+    def empty_map():
+        result = {"system-name": "vcity-monitor",
+                  "start": "",
+                  "end": ""}
+        return result
     
     @property
-    def end(self):
-        return self.start
-    @end.setter
-    def end(self, end):
-        self.end = end
-
+    def process_time(self):
+        result = {"system-name": self.sys_name,
+                  "start": self.start,
+                  "end": self.end}
+        return result
+    
 # Thrat info expression format based on the definition of ICT-Isac. 
 class X_ICT_Isac_Cti():
-    def __init__(self, submit_time: str=None, proc: ProcessStat=None, mon: MonitoringStat=None) -> None:
+    def __init__(self, submit_time:str=None, proc:ProcessStat=None, mon:MonitoringStat=None) -> None:
         self.id = str(uuid.uuid4())
         self.submit_time = submit_time
         self.__monitoring = mon
@@ -96,29 +99,25 @@ class X_ICT_Isac_Cti():
         self.__schema = dict({'x-ict-isac.jp': {"id": self.id}})
         self.__schema['submit_time'] = self.submit_time
         
-        if proc is None: self.__schema['x-ict-isac.jp']['monitoring'] = mon.__dict__
-        self.__schema['x-ict-isac.jp']['process-time'] = proc.__dict__
+        self.__schema['x-ict-isac.jp']['monitoring'] = mon.monitoring
+        self.__schema['x-ict-isac.jp']['process-time'] = self.process_time
     @property
     def schema(self):
         return self.__schema
     @property
     def monitoring(self):
         # return self.__monitoring if the attribute is not None or return empty monitoring map 
-        return_map = MonitoringStat.empty_map() if self.__monitoring is None else self.__monitoring
-        return return_map
+        if self.__monitoring is None:
+            return MonitoringStat().empty_map()
+        else:
+            return self.__monitoring.monitoring
     @property
     def process_time(self):
-        return self.__process_time
+        if self.__process_time is None:
+            return ProcessStat().empty_map()
+        else:
+            return self.__process_time.process_time
 
-    @schema.setter
-    def schema(self, schema):
-        self.__schema = schema
-    @monitoring.setter
-    def monitoring(self, mon):
-        pass
-    @process_time.setter
-    def process_time(self, proc):
-        pass
     
 def main():
     monstat = MonitoringStat()
