@@ -40,7 +40,6 @@ def monitoring_stat(row: list, observe_time:str):
     '''
     HTTP_ = 80
     HTTPS_ = 443
-    print_threat_id(row[csvidx.UID])
        # prepare HTTP header for send_http()
     req_header = {"Accept-Encoding": "gzip,deflate", "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.106 Safari/537.36",
                   "Host": ""}
@@ -60,7 +59,6 @@ def monitoring_stat(row: list, observe_time:str):
         req_header['Host'] = input
     else:
         # There's no information of domain name or IP, so skip this row.
-        print('IP address or domain is not provided. Skipped this row.\n')
         return
     input = input.replace('[', '').replace(']', '')
 
@@ -77,10 +75,7 @@ def monitoring_stat(row: list, observe_time:str):
         hashes, i = json_decoder.raw_decode(hashes)
         if i in locals():
             del i
-    except JSONDecodeError:
-        print('No hash info found. Proceeding.\n')
-    except KeyError:
-        print("#hash info found, but failed to identify the algorithm.")
+    except (JSONDecodeError, KeyError):
         hashes = ['']
         # parse row[file type] and if there are multiple file info, store data to 'files'
         # otherwise store a file information to 'file'.
@@ -91,9 +86,6 @@ def monitoring_stat(row: list, observe_time:str):
     mal_files = []
     for file in file_list:
         if file != '':
-            print('\n==FOUND FILE INFO==\nFILE TYPE:', file)
-            pprint.pprint(hashes[file_cnt])
-            print("\n")
             mal_file["file-type"] = file
             mal_file["hashes"] = hashes[file_cnt]
             mal_files.append(mal_file.copy())
@@ -119,13 +111,11 @@ def monitoring_stat(row: list, observe_time:str):
         try:
             dst_port = int(dst_port)
         except:
-            print(row[csvidx.PORT], "is not expected as a port number.")
             dst_port = HTTP_
     # Send ping & HTTP "GET" request
     network_traffic = {'src-port': src_port, 'dst-port': dst_port}
     ping, http_ext = monitor(
         host=input, src_port=src_port, dst_port=dst_port, http_headers=req_header)
-    print(ping, http_ext)
     http_version = ''
     http_response_ext = {'status_code': '', 'reason_phrase': ''}
     # Received HTTP response
@@ -141,7 +131,6 @@ def monitoring_stat(row: list, observe_time:str):
     try:
         req_value = row[csvidx.URL].split('//', 1)[1].split('/', 1)[1]
     except IndexError:
-        print('URL is not provided in CSV file.')
         req_value = ''
     http_request_ext = {'request-method': 'get', 'request-value': req_value,
                         'request-version': http_version, 'request-header': req_header}
@@ -157,8 +146,6 @@ def monitoring_stat(row: list, observe_time:str):
     monitor_.http_response_ext = http_response_ext
     monitor_.file = mal_file
     monitor_.files = mal_files
-    pprint.pprint(monitor_.monitoring)
-    print('\n')
     return monitor_
 
 # Manages of send_ping and send_http

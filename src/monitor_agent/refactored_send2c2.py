@@ -1,4 +1,6 @@
-import argparse, datetime, pprint, sys, os
+import argparse, datetime, sys, os
+from pprint import pprint
+from concurrent.futures import ThreadPoolExecutor
 sys.path.append("../")
 
 from monitor_agent.csvutils import CsvParser
@@ -30,10 +32,15 @@ def main():
     observe_time = observe_time.strftime('%Y-%m-%dT%H:%M:%S')
     print("Observed at:", observe_time, "\n")
     
-    # list of threats in csv file
+    # Execute monitoring concurrently.
+    # monitoring_stat() can be executed one by one, but it requires network I/O,
+    # hense, it will be much slower compared to concurrent execution.
     rows = CsvParser(filename=args.c2list)
-    for row in rows.readline():
-        monitoring_stat(row, observe_time)
+    with ThreadPoolExecutor(max_workers=4, thread_name_prefix="Server") as executor:
+        results = executor.map(monitoring_stat, [row for row in rows.readline()], observe_time)
+    for result in results:
+        pprint(result.monitoring, indent=2)
+        print()
 
 if __name__ == '__main__':
     main()

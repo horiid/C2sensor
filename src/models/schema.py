@@ -71,7 +71,7 @@ class MonitoringStat():
 # Value class for key: "process-time"
 class ProcessStat():
     def __init__(self, start: str, end: str) -> None:
-        self.sys_name = sys.platform
+        self.sys_name = "vcity-monitor"
     @property
     def start(self):
         return self.start
