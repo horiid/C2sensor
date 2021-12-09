@@ -1,6 +1,6 @@
 import os
 
-def get_path(path:str, threat_id:str, observe_time:str, filename:str, create_path:bool=False):
+def get_path(path:str, threat_id:str, observe_time:str, filename:str, uuid:str, create_path:bool=False):
     '''Get a path for storing monitoring results
 
     Get a path accordingly, referencing observation time and threat ID.
@@ -44,4 +44,4 @@ def get_path(path:str, threat_id:str, observe_time:str, filename:str, create_pat
         print("created the path:", abs_path)
     path_list.append(filename)
     return_val = os.path.join(abs_path, filename.replace(':', '_'))
-    return return_val
+    return return_val+"_" + uuid + ".json"

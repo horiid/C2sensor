@@ -69,15 +69,16 @@ def main():
     for result in results:
         # if save_logs flag is set, save results
         if config.save_logs:
-            storage_path = get_path(path=config.path, 
-                                       threat_id=result[1].threat_id,
-                                       observe_time=result[0].start,
-                                       filename=result[0].start+".json",
-                                       create_path=True)
+            cti = X_ICT_Isac_Cti(result[0].start, result[0], result[1])
+            storage_path = get_path(path=config.path,
+                                    threat_id=result[1].threat_id,
+                                    observe_time=result[0].start,
+                                    filename=result[0].start,
+                                    uuid=cti.id,
+                                    create_path=True)
             if storage_path is None:
                 continue
             print(storage_path)
-            cti = X_ICT_Isac_Cti(result[0].start, result[0], result[1])
             with open(storage_path, "w", encoding='utf-8') as outf:
                 json.dump(cti.schema, outf, indent=4)
         print(result[1].threat_id)
