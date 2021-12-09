@@ -6,7 +6,7 @@ Type=simple
 EnvironmentFile=/home/pi/thesis/.send2c2conf
 WorkingDirectory=/home/pi/thesis
 ExecStart=/usr/bin/python3 /home/pi/thesis/send2c2.py $C2LIST %I 
-Restart=on-failure
+Restart=no
 
 [Install]
 WantedBy=multi-user.target
