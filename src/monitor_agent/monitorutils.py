@@ -73,13 +73,18 @@ def monitoring_stat(row: list):
     file_list = row[csvidx.FILE_TYPE].split(',')
     mal_file = {"file-type": "", "name": "", "hashes": {"md5": "", "sha1": "", "sha256": ""}}
     mal_files = []
-    for file in file_list:
-        if file != '':
-            mal_file["file-type"] = file
-            mal_file["hashes"] = hashes[file_cnt]
-            mal_files.append(mal_file.copy())
-            file_cnt += 1
-    if file_cnt == 1:
+    try:
+        for file in file_list:
+            if file != '':
+                mal_file["file-type"] = file
+                mal_file["hashes"] = hashes[file_cnt]
+                mal_files.append(mal_file.copy())
+                file_cnt += 1
+        if file_cnt == 1:
+            mal_files = []
+    except IndexError:
+        print("ERROR: failed to load malware hash")
+        mal_file = {"file-type": "", "name": "", "hashes": {"md5": "", "sha1": "", "sha256": ""}}
         mal_files = []
     # Preprocessing for  sending data to C2 servers
     src_port = randint(49152, 65535)
