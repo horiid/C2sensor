@@ -8,7 +8,7 @@ class ConfigManager():
         if self.check_file_path():
             self.ini_file = configparser.ConfigParser()
             self.ini_file.read(self.conf_path, encoding='utf-8')
-            
+
             self.path_section = 'DEFAULT_PATHS' if read_default else 'STORAGE_PATHS'
             self.path = self.ini_file.get(self.path_section, 'path')
             self.path = os.path.expanduser(self.path)

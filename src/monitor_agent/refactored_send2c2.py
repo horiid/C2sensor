@@ -63,7 +63,7 @@ def main():
     # hense, it will be much slower compared to run it concurrently.
     rows = CsvParser(filename=threatCSV)
     with ThreadPoolExecutor(max_workers=4, thread_name_prefix="Server") as executor:
-        results = executor.map(process_timer, [row.encode('utf-8') for row in rows.readline()])
+        results = executor.map(process_timer, [row for row in rows.readline()])
     
     # See results
     for result in results:
