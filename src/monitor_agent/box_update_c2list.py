@@ -24,5 +24,5 @@ def download_c2list():
                 return True
             
         
-
+# run python box_update_c2list.py to update c2 server list.
 download_c2list()
