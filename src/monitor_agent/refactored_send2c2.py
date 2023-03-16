@@ -7,9 +7,10 @@ from monitor_agent.loggers import get_path
 sys.path.append(os.pardir)
 
 from monitor_agent.csvutils import CsvParser
-from monitor_agent.monitorutils import monitor, monitoring_stat
+from monitor_agent.monitorutils import monitoring_stat
 from models.schema import ProcessStat, X_ICT_Isac_Cti
 from monitor_agent import configutils
+from monitor_agent import box_upload
 
 def print_banner():
     os.system("cls" if os.name == "nt" else "clear")
@@ -23,10 +24,11 @@ def print_banner():
 
 # timer program execution for process-time
 def process_timer(row: list):
-    start = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
+    start = datetime.datetime.now()
     monitor = monitoring_stat(row)
     end = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
-    return ProcessStat(start=start, end=end), monitor
+    return ProcessStat(start=start.strftime('%Y-%m-%dT%H:%M:%S'), end=end), \
+        monitor, start.strftime('%Y%m%d_%H00')
 
 def main():
     print_banner() 
@@ -41,10 +43,7 @@ def main():
     args = parser.parse_args()
 
     config_ini = "src/config/config.ini"
-    config = configutils.ConfigManager(conf_path=config_ini, 
-                                       read_default=args.read_default,
-                                       read_monitor=args.read_monitor,
-                                       save_logs=args.save_logs)
+    config = configutils.ConfigManager(conf_path=config_ini)
     # if neither config.ini nor argument specifies csv file, then abort.
     if config.c2_list is not None:
         threatCSV = config.c2_list
@@ -65,23 +64,18 @@ def main():
     with ThreadPoolExecutor(max_workers=4, thread_name_prefix="Server") as executor:
         results = executor.map(process_timer, [row for row in rows.readline()])
     
-    # See results
+    # create and upload log files to box
+    cli = box_upload.config(config.box_auth)
     for result in results:
-        # if save_logs flag is set, save results
         if config.save_logs:
             cti = X_ICT_Isac_Cti(result[0].start, result[0], result[1])
-            storage_path = get_path(path=config.path,
-                                    threat_id=result[1].threat_id,
-                                    observe_time=result[0].start,
-                                    filename=result[0].start,
-                                    uuid=cti.id,
-                                    create_path=True)
-            if storage_path is None:
-                continue
-            print(storage_path)
-            with open(storage_path, "w", encoding='utf-8') as outf:
+            filename = "%s_%s_%s.json"%(result[2], config.agent_name, cti.id)
+            with open(filename, "w", encoding='utf-8') as outf:
                 json.dump(cti.schema, outf, indent=4)
+            ul_folder = box_upload.find_and_create_folder_id(client=cli, filename=filename, threat_id=result[1].threat_id)
+            new_file = cli.folder(ul_folder).upload(filename)
+            os.remove(filename)
+            print('Uploaded new file: %s[%s] to Box.'%(new_file.name, new_file.id))
         print(result[1].threat_id)
         pprint(result[1].http_response_ext, width=40)
         print()
-
