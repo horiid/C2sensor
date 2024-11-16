@@ -1,4 +1,4 @@
-# C2 Sensor for C2LEMON
+# C2 Sensor
 This is C2 sensor program for C2LEMON. The sensor is for collecting C2 servers'
 responses, which can be visualized with C2LEMON app server. Responses are written in json format, and the specification is referenced at /models/schema.py.
 
